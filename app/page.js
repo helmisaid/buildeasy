@@ -1,5 +1,5 @@
 // File: app/page.js
-// Description: The main page, updated to handle file uploads with FormData and an intelligent prompt generator.
+// Description: The main page, with a corrected and more intelligent prompt generator.
 
 "use client";
 
@@ -8,7 +8,7 @@ import GeneratorForm from '../components/GeneratorForm';
 import Header from '../components/Header';
 import SuccessMessage from '../components/SuccessMessage';
 
-// Content for internationalization with full English translations
+// Content for internationalization (no changes needed here)
 const content = {
     id: {
         tagline: 'Jelaskan website impianmu. Kami yang akan mewujudkannya menjadi kenyataan.',
@@ -188,14 +188,21 @@ export default function Home() {
     prompt += `### Required Features & Content Sections\n`;
     if (data.features.length === 0) prompt += `- A standard landing page with hero, about, and contact sections.\n`;
     
+    // REVISED: This function now gives clear instructions to the AI.
     const generateListPrompt = (list, fileFieldName, textDataKey) => {
         let listPrompt = `The data for this list is in the '${textDataKey}' JSON field. The corresponding images have been uploaded to the '${fileFieldName}' file field. In the generated website, you must associate each item from the text data with its corresponding image from the file field by index (e.g., the first image in the file field belongs to the first item in the JSON data).\n`;
         list.forEach((item, index) => {
             // FIX: This filter now correctly checks if the value exists before including it.
-            const itemDetails = Object.entries(item)
+            let itemDetails = Object.entries(item)
                 .filter(([key, value]) => !['fileObject', 'id', 'previewUrl'].includes(key) && value)
                 .map(([key, value]) => `${key}: "${value}"`)
                 .join(', ');
+
+            if (item.fileObject) {
+                 if (itemDetails) itemDetails += ', ';
+                 itemDetails += `image: "(File ${index + 1} from the '${fileFieldName}' field)"`;
+            }
+
             listPrompt += `  - Item ${index+1} Data: { ${itemDetails} }\n`;
         });
         return listPrompt;
