@@ -164,7 +164,7 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const POCKETBASE_URL = 'http://dataclient.evop.tech:8090'; 
+  const POCKETBASE_URL = 'http://152.42.249.230:8090'; 
   const COLLECTION_NAME = 'website_requests';
 
   const generateDynamicPrompt = (data) => {
