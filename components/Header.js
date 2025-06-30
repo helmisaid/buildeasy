@@ -3,7 +3,7 @@
 
 // A simple, stylized SVG logo for evop.tech
 const EvopLogo = () => (
-    <svg width="120" height="40" viewBox="0 0 120 40" fill="none" xmlns="http://www.w3.org/2000/svg" className="mx-auto">
+    <svg width="256" height="40" viewBox="0 0 120 40" fill="none" xmlns="http://www.w3.org/2000/svg" className="mx-auto">
       <path d="M20.333 32H8.666L14.5 20.5L8.666 9H20.333L26.167 20.5L20.333 32Z" fill="#06b6d4"/>
       <text x="35" y="28" fontFamily="Inter, sans-serif" fontSize="24" fontWeight="bold" fill="white">evop.tech</text>
     </svg>
