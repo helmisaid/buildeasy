@@ -5,8 +5,8 @@
 
 import { useState } from 'react';
 import GeneratorForm from '../components/GeneratorForm';
-import SubmissionSummary from '../components/SubmissionSummary';
 import Header from '../components/Header';
+import SubmissionSummary from '../components/SubmissionSummary';
 import content from '../lib/content'; // Import the content object
 
 export default function Home() {
@@ -15,7 +15,7 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const POCKETBASE_URL = 'http://dataclient.evop.tech:8090'; // Endpoint Updated
+  const POCKETBASE_URL = 'https://pocketbase.evoptech.com'; // Endpoint Updated
   const COLLECTION_NAME = 'website_requests';
 
   const generateDynamicPrompt = (data) => {
