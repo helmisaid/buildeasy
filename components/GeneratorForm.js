@@ -1,5 +1,5 @@
 // File: components/GeneratorForm.js
-// Description: The main form, with a smart page builder that filters components by website type.
+// Description: The main form, updated with conditional inputs for hero images, about text, and contact form features.
 
 import { Bars3Icon, DocumentDuplicateIcon, IdentificationIcon, LightBulbIcon, PaintBrushIcon, PhotoIcon, PlusIcon, SparklesIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { useEffect, useRef, useState } from 'react';
@@ -19,7 +19,8 @@ const GeneratorForm = ({ onSubmit, isLoading, error, content, lang }) => {
     colors: ['#2563eb', '#06b6d4'],
     font: 'Inter',
     useAnimation: true,
-    pages: [{ id: 1, slug: '/', components: [] }],
+    pages: [{ id: 1, slug: '/', components: [], heroImageFile: null, heroImagePreview: null, componentData: {} }],
+    contactFormFeatures: { phone: false, subject: false },
     products: [], portfolioProjects: [], testimonials: [], teamMembers: [], services: [], faqs: [],
     postCategories: '', workProcess: '', detailedAboutMe: '',
     customFields: [{ id: 1, key: '', value: '' }],
@@ -28,7 +29,6 @@ const GeneratorForm = ({ onSubmit, isLoading, error, content, lang }) => {
   const currentContent = content[lang] || content.id;
   const availableFeatures = currentContent.featureMapping[formData.websiteType] || {};
   
-  // NEW: Filter available components based on the selected website type
   const componentIdsForType = currentContent.componentMapping[formData.websiteType] || [];
   const filteredAvailableComponents = (currentContent.availableComponents || []).filter(c => componentIdsForType.includes(c.id));
   
@@ -41,7 +41,7 @@ const GeneratorForm = ({ onSubmit, isLoading, error, content, lang }) => {
     setFormData(prev => ({
       ...prev,
       websiteType: type,
-      pages: [{ id: 1, slug: '/', components: [] }], // Reset pages
+      pages: [{ id: 1, slug: '/', components: [], heroImageFile: null, heroImagePreview: null, componentData: {} }],
       products: [], portfolioProjects: [], testimonials: [], teamMembers: [], services: [], faqs: [],
       postCategories: '', workProcess: '', detailedAboutMe: ''
     }));
@@ -57,6 +57,12 @@ const GeneratorForm = ({ onSubmit, isLoading, error, content, lang }) => {
         if (lastFormData.logoPreview) {
             URL.revokeObjectURL(lastFormData.logoPreview);
         }
+        // Cleanup for page-specific hero images
+        lastFormData.pages.forEach(page => {
+            if (page.heroImagePreview) {
+                URL.revokeObjectURL(page.heroImagePreview);
+            }
+        });
         ['products', 'portfolioProjects', 'testimonials', 'teamMembers'].forEach(key => {
             if (lastFormData[key]) {
                 lastFormData[key].forEach(item => {
@@ -82,15 +88,54 @@ const GeneratorForm = ({ onSubmit, isLoading, error, content, lang }) => {
   const addColor = () => setFormData(prev => ({...prev, colors: [...prev.colors, '#ffffff']}));
   const removeColor = (index) => { if (formData.colors.length > 1) setFormData(prev => ({ ...prev, colors: formData.colors.filter((_, i) => i !== index) })); };
 
-  const addPage = () => setFormData(prev => ({ ...prev, pages: [...prev.pages, { id: Date.now(), slug: '', components: [] }] }));
-  const removePage = (pageId) => { if (formData.pages.length > 1) setFormData(prev => ({ ...prev, pages: prev.pages.filter(p => p.id !== pageId) })); };
-  const handlePageChange = (pageId, field, value) => {
-      if (field === 'slug') {
-          const slugValue = value.startsWith('/') ? value.substring(1) : value;
-          value = '/' + slugValue.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '').replace(/-+/g, '-');
-      }
-      setFormData(prev => ({ ...prev, pages: prev.pages.map(p => p.id === pageId ? { ...p, [field]: value } : p)}));
+  const addPage = () => setFormData(prev => ({ ...prev, pages: [...prev.pages, { id: Date.now(), slug: '', components: [], heroImageFile: null, heroImagePreview: null, componentData: {} }] }));
+  const removePage = (pageId) => {
+    if (formData.pages.length > 1) {
+        const pageToRemove = formData.pages.find(p => p.id === pageId);
+        if (pageToRemove && pageToRemove.heroImagePreview) {
+            URL.revokeObjectURL(pageToRemove.heroImagePreview);
+        }
+        setFormData(prev => ({ ...prev, pages: prev.pages.filter(p => p.id !== pageId) }));
+    }
   };
+
+  const handlePageChange = (pageId, field, value) => {
+      setFormData(prev => ({
+          ...prev,
+          pages: prev.pages.map(p => {
+              if (p.id === pageId) {
+                  let newSlug = p.slug;
+                  if (field === 'slug') {
+                      const slugValue = value.startsWith('/') ? value.substring(1) : value;
+                      newSlug = '/' + slugValue.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '').replace(/-+/g, '-');
+                      return { ...p, slug: newSlug };
+                  }
+                  return { ...p, [field]: value };
+              }
+              return p;
+          })
+      }));
+  };
+
+  const handleComponentDataChange = (pageId, componentId, field, value) => {
+    setFormData(prev => ({
+        ...prev,
+        pages: prev.pages.map(p => 
+            p.id === pageId 
+            ? { ...p, componentData: { ...p.componentData, [componentId]: { ...p.componentData[componentId], [field]: value } } }
+            : p
+        )
+    }));
+  };
+
+  const handleContactFeatureChange = (e) => {
+    const { name, checked } = e.target;
+    setFormData(prev => ({
+        ...prev,
+        contactFormFeatures: { ...prev.contactFormFeatures, [name]: checked }
+    }));
+  };
+  
   const addComponentToPage = (pageId, componentString) => {
     if (!componentString) return;
     const component = JSON.parse(componentString);
@@ -249,6 +294,39 @@ const GeneratorForm = ({ onSubmit, isLoading, error, content, lang }) => {
                                 {filteredAvailableComponents.map(c => <option key={c.id} value={JSON.stringify(c)}>{c.name}</option>)}
                             </select>
                         </div>
+
+                        {/* --- Conditional Inputs for Components --- */}
+                        {page.components.some(c => c.id === 'hero') && (
+                            <div className="mt-4 pt-4 border-t border-gray-700/50">
+                                <label className={labelClass}>{currentContent.heroImageLabel}{requiredSpan}</label>
+                                <ImageUploader 
+                                    itemId={`hero-${page.id}`} 
+                                    previewSrc={page.heroImagePreview} 
+                                    onFileChange={(file) => {
+                                        if (file) {
+                                            if (page.heroImagePreview) URL.revokeObjectURL(page.heroImagePreview);
+                                            const newPreview = URL.createObjectURL(file);
+                                            handlePageChange(page.id, 'heroImageFile', file);
+                                            handlePageChange(page.id, 'heroImagePreview', newPreview);
+                                        }
+                                    }}
+                                />
+                            </div>
+                        )}
+
+                        {page.components.some(c => c.id === 'about') && (
+                            <div className="mt-4 pt-4 border-t border-gray-700/50">
+                                <label className={labelClass}>{currentContent.aboutComponentTextLabel}</label>
+                                <textarea 
+                                    value={page.componentData?.about?.description || ''} 
+                                    onChange={(e) => handleComponentDataChange(page.id, 'about', 'description', e.target.value)} 
+                                    className={inputClass} 
+                                    rows="3" 
+                                    placeholder={currentContent.aboutTextPlaceholder}
+                                />
+                                <p className="text-xs text-gray-500 mt-1">{currentContent.aboutComponentHint}</p>
+                            </div>
+                        )}
                     </div>
                 </div>
             ))}
@@ -259,6 +337,21 @@ const GeneratorForm = ({ onSubmit, isLoading, error, content, lang }) => {
         {/* --- Feature Content Section --- */}
         <div>
              <SectionHeader icon={<SparklesIcon className="w-7 h-7 text-[#06b6d4]" />} title="Isi Konten Fitur" />
+             {isComponentUsed('contact') && (
+                <div className="space-y-4 mt-6">
+                    <h3 className={labelClass}>{currentContent.contactComponentFeaturesLabel}</h3>
+                    <div className="bg-gray-800/50 p-4 rounded-lg border border-gray-700 space-y-3">
+                        <div className="relative flex items-start">
+                            <div className="flex h-6 items-center"><input id="contact-phone" name="phone" type="checkbox" checked={formData.contactFormFeatures.phone} onChange={handleContactFeatureChange} className="h-4 w-4 rounded border-gray-600 text-[#06b6d4] focus:ring-offset-gray-900 focus:ring-[#06b6d4] bg-gray-700"/></div>
+                            <div className="ml-3 text-sm leading-6"><label htmlFor="contact-phone" className="font-medium text-gray-300">{currentContent.addPhoneField}</label></div>
+                        </div>
+                        <div className="relative flex items-start">
+                            <div className="flex h-6 items-center"><input id="contact-subject" name="subject" type="checkbox" checked={formData.contactFormFeatures.subject} onChange={handleContactFeatureChange} className="h-4 w-4 rounded border-gray-600 text-[#06b6d4] focus:ring-offset-gray-900 focus:ring-[#06b6d4] bg-gray-700"/></div>
+                            <div className="ml-3 text-sm leading-6"><label htmlFor="contact-subject" className="font-medium text-gray-300">{currentContent.addSubjectField}</label></div>
+                        </div>
+                    </div>
+                </div>
+             )}
              {isComponentUsed('products') && <div className="space-y-4 mt-6"><h3 className={labelClass}>{currentContent.productListLabel}</h3>{formData.products.map(p => renderDynamicItem(p, productHandlers.remove, <><ImageUploader itemId={`product-${p.id}`} previewSrc={p.previewUrl} onFileChange={(file) => productHandlers.handleFileChange(p.id, file)} /><div className="grid grid-cols-1 md:grid-cols-2 gap-3"><div><label className="text-xs text-gray-400">{currentContent.productNameLabel}{requiredSpan}</label><input type="text" value={p.name} onChange={e => productHandlers.handleChange(p.id, 'name', e.target.value)} className={inputClass} required /></div><div><label className="text-xs text-gray-400">{currentContent.priceLabel}{requiredSpan}</label><input type="text" value={p.price} onChange={e => productHandlers.handleChange(p.id, 'price', e.target.value)} className={inputClass} required /></div></div><div><label className="text-xs text-gray-400">{currentContent.oldPriceLabel}</label><input type="text" value={p.oldPrice} onChange={e => productHandlers.handleChange(p.id, 'oldPrice', e.target.value)} className={inputClass} /></div></>))}{renderAddButton(() => productHandlers.add({ name: '', price: '', oldPrice: '' }), currentContent.addProduct)}</div>}
              {isComponentUsed('gallery') && <div className="space-y-4 mt-6"><h3 className={labelClass}>{currentContent.projectGalleryLabel}</h3>{formData.portfolioProjects.map(p => renderDynamicItem(p, portfolioHandlers.remove, <><ImageUploader itemId={`portfolio-${p.id}`} previewSrc={p.previewUrl} onFileChange={(file) => portfolioHandlers.handleFileChange(p.id, file)} /><div><label className="text-xs text-gray-400">{currentContent.projectNameLabel}{requiredSpan}</label><input type="text" value={p.name} onChange={e => portfolioHandlers.handleChange(p.id, 'name', e.target.value)} className={inputClass} required /></div><div><label className="text-xs text-gray-400">{currentContent.projectDescLabel}</label><textarea value={p.description} onChange={e => portfolioHandlers.handleChange(p.id, 'description', e.target.value)} className={inputClass} rows={2} /></div><div><label className="text-xs text-gray-400">{currentContent.projectUrlLabel}</label><input type="url" value={p.projectUrl} onChange={e => portfolioHandlers.handleChange(p.id, 'projectUrl', e.target.value)} className={inputClass} /></div></>))}{renderAddButton(() => portfolioHandlers.add({ name: '', description: '', projectUrl: '' }), currentContent.addProject)}</div>}
              {isComponentUsed('testimonials') && <div className="space-y-4 mt-6"><h3 className={labelClass}>{currentContent.testimonialsLabel}</h3>{formData.testimonials.map(t => renderDynamicItem(t, testimonialHandlers.remove, <><ImageUploader itemId={`testimonial-${t.id}`} previewSrc={t.previewUrl} onFileChange={(file) => testimonialHandlers.handleFileChange(t.id, file)} /><div><label className="text-xs text-gray-400">{currentContent.customerNameLabel}{requiredSpan}</label><input type="text" value={t.name} onChange={e => testimonialHandlers.handleChange(t.id, 'name', e.target.value)} className={inputClass} required /></div><div><label className="text-xs text-gray-400">{currentContent.testimonialTextLabel}{requiredSpan}</label><textarea value={t.text} onChange={e => testimonialHandlers.handleChange(t.id, 'text', e.target.value)} className={inputClass} rows={2} required /></div></>))}{renderAddButton(() => testimonialHandlers.add({ name: '', text: '' }), currentContent.addTestimonial)}</div>}

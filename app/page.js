@@ -1,5 +1,5 @@
 // File: app/page.js
-// Description: The main page, updated with the new PocketBase URL and improved logic.
+// Description: The main page, with a critical fix for hero image uploads to match the database schema.
 
 "use client";
 
@@ -15,7 +15,7 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const POCKETBASE_URL = 'https://pocketbase.evoptech.com'; // Endpoint Updated
+  const POCKETBASE_URL = 'https://pocketbase.evoptech.com';
   const COLLECTION_NAME = 'website_requests';
 
   const generateDynamicPrompt = (data) => {
@@ -29,7 +29,7 @@ export default function Home() {
     prompt += `- **Brand Name:** ${data.companyName}\n`;
     if (data.logoFile) prompt += `- **Logo:** A logo file has been uploaded to the 'logo' field in the database. Use this file as the primary logo.\n`;
     else if (data.logoUrl) prompt += `- **Logo URL:** ${data.logoUrl}\n`;
-    prompt += `- **Brand Description:** "${data.aboutText}"\n`;
+    prompt += `- **Brand Description (Global):** "${data.aboutText}"\n`;
     prompt += `- **Contact Email:** ${data.contactEmail}\n`;
     prompt += `- **Color Palette:** The primary color is ${data.colors[0]}. The full palette is: ${data.colors.join(', ')}.\n`;
     prompt += `- **Typography:** Use the Google Font "${data.font}" for all text content.\n`;
@@ -39,16 +39,37 @@ export default function Home() {
         prompt += `- **Animation Style:** No animations requested.\n\n`;
     }
     
-    prompt += `### WEBSITE PAGE STRUCTURE\n`;
+    prompt += `### WEBSITE PAGE STRUCTURE & CONTENT\n`;
     prompt += `The website must have the following pages with the specified slugs and components in order:\n`;
-    data.pages.forEach(page => {
-        prompt += `\n**PAGE: ${page.slug === '/' ? 'Homepage' : page.slug}**\n`;
+    data.pages.forEach((page, index) => {
+        prompt += `\n**PAGE ${index + 1}: ${page.slug === '/' ? 'Homepage' : page.slug}**\n`;
         prompt += `- **URL Slug:** ${page.slug}\n`;
+        
+        if (page.heroImageFile) {
+            // Updated prompt to refer to the collection of hero images
+            prompt += `- **Hero Image:** A specific hero image has been uploaded for this page. It is one of the files in the 'hero_images' collection for this record. Associate it correctly.\n`;
+        }
+
         prompt += `- **Components on this page:**\n`;
         page.components.forEach(comp => {
             prompt += `  - **${comp.name}**\n`;
+            if (comp.id === 'about' && page.componentData?.about?.description) {
+                prompt += `    - **Content:** Use the following text for this About section: "${page.componentData.about.description}"\n`;
+            }
         });
     });
+    
+    if (data.pages.some(p => p.components.some(c => c.id === 'contact'))) {
+        prompt += `\n### CONTACT FORM SETUP\n`;
+        prompt += `- The main contact email is ${data.contactEmail}.\n`;
+        if (data.contactFormFeatures.phone) {
+            prompt += `- The contact form should include an optional 'Phone Number' field.\n`;
+        }
+        if (data.contactFormFeatures.subject) {
+            prompt += `- The contact form should include a 'Subject' field.\n`;
+        }
+    }
+
 
     prompt += `\n### FEATURE CONTENT DATA\n`;
     prompt += `When building a component (e.g., 'Project Gallery'), use the corresponding data from this section. Associate uploaded files by their index.\n`;
@@ -81,7 +102,7 @@ export default function Home() {
     if (data.workProcess) prompt += `\n**Work Process Text:** "${data.workProcess}".\n`;
     if (data.detailedAboutMe) prompt += `\n**Detailed Profile Text:** "${data.detailedAboutMe}".\n`;
 
-    if (data.customFields.length > 0) {
+    if (data.customFields.filter(f => f.key && f.value).length > 0) {
         prompt += `\n### ADDITIONAL PARAMETERS\n`;
         data.customFields.forEach(field => { if(field.key && field.value) prompt += `- **${field.key}:** ${field.value}\n`});
     }
@@ -110,16 +131,31 @@ export default function Home() {
     fd.append('lang', lang);
     fd.append('status', 'pending');
     
+    // Clean and stringify page data, removing file objects
+    const pagesForDb = formData.pages.map(p => {
+        const { heroImageFile, heroImagePreview, ...rest } = p;
+        return rest;
+    });
+    fd.append('pages', JSON.stringify(pagesForDb));
+    
+    // --- FIX: Append all page-specific hero images to the correct 'hero_images' field ---
+    formData.pages.forEach(p => {
+        if (p.heroImageFile) {
+            // Append each hero image to the same field name as defined in the schema
+            fd.append('hero_images', p.heroImageFile);
+        }
+    });
+
+    fd.append('contactFormFeatures', JSON.stringify(formData.contactFormFeatures));
+    fd.append('colors', JSON.stringify(formData.colors));
+    fd.append('customFields', JSON.stringify(formData.customFields.filter(f => f.key)));
+
     const cleanAndStringify = (arr, fieldsToKeep) => JSON.stringify(arr.map(item => {
         let cleanItem = {};
         fieldsToKeep.forEach(field => { if(item[field]) cleanItem[field] = item[field]; });
         return cleanItem;
     }));
-
-    fd.append('pages', cleanAndStringify(formData.pages, ['slug', 'components']));
-    fd.append('colors', JSON.stringify(formData.colors));
-    fd.append('customFields', JSON.stringify(formData.customFields.filter(f => f.key)));
-
+    
     const processDynamicData = (dataKey, fileKey, fieldsToKeep) => {
         const textData = [];
         const files = [];
@@ -151,7 +187,11 @@ export default function Home() {
         body: fd,
       });
 
-      if (!response.ok) throw new Error((await response.json()).message);
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('PocketBase Error:', errorData);
+        throw new Error(errorData.message || 'Server returned an error.');
+      }
       
       setSubmittedData(formData);
     } catch (err) {
