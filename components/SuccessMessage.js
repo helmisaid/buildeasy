@@ -19,21 +19,19 @@ const SuccessMessage = ({ content }) => {
                 <div className="space-y-4 max-w-sm mx-auto">
                     <div className="bg-gray-800 p-4 rounded-lg">
                         <p className="font-bold text-[#06b6d4]">{content.bankTransfer}</p>
-                        <p className="mt-1 text-gray-300">Bank BCA: <strong className="text-white">1234567890</strong> a/n BuildEasy Tech</p>
-                        <p className="mt-1 text-gray-300">Bank Mandiri: <strong className="text-white">0987654321</strong> a/n BuildEasy Tech</p>
                     </div>
 
                     <div className="bg-gray-800 p-4 rounded-lg">
                         <p className="font-bold text-[#e879f9]">QRIS</p>
                         <div className="mt-2 flex justify-center">
-                            <img src="https://placehold.co/160x160/ffffff/000000?text=QRIS+Code" alt="QRIS Payment Code" className="rounded-md" />
+                            <img src="qrevop.jpg" alt="QRIS Payment Code" className="rounded-md" />
                         </div>
                          <p className="text-xs text-gray-400 text-center mt-2">{content.qrisSupport}</p>
                     </div>
                 </div>
 
                 <p className="mt-6 text-xs text-gray-500 text-center">
-                    {content.paymentConfirmation} <strong>0812-3456-7890</strong>.
+                    {content.paymentConfirmation} <strong>0812-4911-1169</strong>.
                 </p>
             </div>
         </div>
