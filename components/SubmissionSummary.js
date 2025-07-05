@@ -104,12 +104,12 @@ const SubmissionSummary = ({ data, content }) => {
             <p className="font-bold text-[#06b6d4]">{content.bankTransfer}</p>
             <p className="mt-1 text-gray-300">
               Bank BRI: <strong className="text-white">007001098860500</strong>{" "}
-              a/n BuildEasy Tech
+              a/n ARYA MAULANA
             </p>
             <p className="mt-1 text-gray-300">
               Bank Mandiri:{" "}
               <strong className="text-white">1710017100481</strong> a/n
-              BuildEasy Tech
+              ARYA MAULANA
             </p>
           </div>
           <div className="bg-gray-800 p-4 rounded-lg">
@@ -127,7 +127,7 @@ const SubmissionSummary = ({ data, content }) => {
           </div>
         </div>
         <p className="mt-6 text-xs text-gray-500 text-center">
-          {content.paymentConfirmation} <strong>0812-3456-7890</strong>.
+          {content.paymentConfirmation} <strong>0812-4911-1169</strong>.
         </p>
       </div>
     </div>
